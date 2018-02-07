@@ -45,10 +45,10 @@ public class CropView: UIView {
      - parameters:
          - image: The UIImage you want in the crop frame
      */
-    public func setUpImage(image : UIImage){
+    public func setUpImage(image : UIImage, contentMode: UIViewContentMode? = nil){
         if(!self.subviews.contains(cropImageView)){
             cropImageView = UIImageView(image: normalizedImage(image: image))
-            cropImageView.contentMode = .scaleAspectFit
+            cropImageView.contentMode = contentMode ?? .scaleAspectFit
             cropImageView.frame = self.bounds
             self.addSubview(cropImageView)
             cropFrame = cropImageView.frame
