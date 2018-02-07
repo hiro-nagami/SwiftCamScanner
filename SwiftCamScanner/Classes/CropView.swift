@@ -48,7 +48,7 @@ public class CropView: UIView {
     public func setUpImage(image : UIImage){
         if(!self.subviews.contains(cropImageView)){
             cropImageView = UIImageView(image: normalizedImage(image: image))
-            cropImageView.contentMode = .scaleToFill
+            cropImageView.contentMode = .scaleAspectFit
             cropImageView.frame = self.bounds
             self.addSubview(cropImageView)
             cropFrame = cropImageView.frame
