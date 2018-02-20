@@ -8,7 +8,7 @@
 import UIKit
 
 public class CropView: UIView {
-    
+
     //MARK:Public Variables
     public var rectangleBorderColor = UIColor.blue
     public var rectangleFillColor = UIColor.clear
@@ -16,14 +16,14 @@ public class CropView: UIView {
     public var circleBackgroundColor = UIColor.black
     public var selectedCircleBorderColor = UIColor.blue
     public var selectedCircleBackgroundColor = UIColor.blue
-    
+
     public var rectangleBorderWidth:CGFloat = 2.0
     public var circleBorderWidth:CGFloat = 1.0
-    
+
     public var circleBorderRadius:CGFloat = 10
     public var circleAlpha:CGFloat = 0.65
     public var rectangleAlpha:CGFloat = 1
-    
+
 
     //MARK:Local Variables
     var cropPoints = [CGPoint]()
@@ -36,8 +36,8 @@ public class CropView: UIView {
     var newImageView = UIImageView()
     let border = CAShapeLayer()
     var oldPoint = CGPoint(x: 0, y: 0)
-    
-    
+
+
     //MARK: Public Methods
     /**
      The entry point function to set up the crop frame and gesture recoginisers for the crop points.
@@ -54,16 +54,16 @@ public class CropView: UIView {
             cropFrame = cropImageView.frame
             setUpCropRegion()
             setUpGestureRecognizer()
-            
+
         }
-        
+
     }
-    
+
     /**
      Crops the region inside the crop points and trasforms it into a rectangle.
      - parameter completionHandler: A completion Handler that takes the transformed image
      */
-    
+
     public func cropAndTransform(completionHandler :@escaping(_ image : UIImage) -> Void){
         /*
          0 -- 1
@@ -71,12 +71,12 @@ public class CropView: UIView {
          3 -- 2
          */
         reorderEndPoints()
-        
+
         var corners = [CGPoint]()
         for i in stride(from: 0, to:7 , by: 2) {
             corners.append(cropCircles[i].center)
         }
-        
+
         let topWidth = distanceBetweenPoints(point1: corners[0], point2: corners[1])
         let bottomWidth = distanceBetweenPoints(point1: corners[3], point2: corners[2])
         let leftHeight = distanceBetweenPoints(point1: corners[0], point2: corners[3])
@@ -91,12 +91,12 @@ public class CropView: UIView {
             corners2.append(point)
         }
         let newImage = OpenCVWrapper.getTransformedImage(newWidth*widthScale, newHeight*heightScale, cropImageView.image, &corners2, (cropImageView.image!.size))
-        
+
         completionHandler(newImage!)
     }
-    
+
     //MARK: Setup functions
-    
+
     /**
      Sets up the crop region - the rectangle and the crop points, their appearance.
      */
@@ -106,17 +106,17 @@ public class CropView: UIView {
         border.lineWidth = rectangleBorderWidth
         border.strokeColor = rectangleBorderColor.withAlphaComponent(rectangleAlpha).cgColor
         self.layer.addSublayer(border)
-        
+
         //Get crop rectangle
         var i = 1
         let x = cropImageView.frame.origin.x
         let y = cropImageView.frame.origin.y
         let width = cropImageView.frame.width
         let height = cropImageView.frame.height
-        
+
         let points = OpenCVWrapper.getLargestSquarePoints(cropImageView.image, cropImageView.frame.size)
         var endPoints = [CGPoint]()
-        
+
         //Add crop points and circles
         if let points = points{
             for i in (0...3) {
@@ -124,13 +124,13 @@ public class CropView: UIView {
                 endPoints.append(CGPoint(x: newPoint.x + x, y: newPoint.y+y))
             }
         }else{
-            endPoints.append(CGPoint(x: x, y: y))
-            endPoints.append(CGPoint(x: x+width, y: y))
-            endPoints.append(CGPoint(x: x+width, y: y+height))
-            endPoints.append(CGPoint(x: x, y: y+height))
+            endPoints.append(CGPoint(x: x + 50, y: y + 50))
+            endPoints.append(CGPoint(x: x+width - 50, y: y + 50))
+            endPoints.append(CGPoint(x: x+width - 50, y: y+height - 50))
+            endPoints.append(CGPoint(x: x + 50, y: y+height - 50))
         }
-        
-        
+
+
         while(i<=8){
             let cropCircle = UIView()
             cropCircle.alpha = circleAlpha
@@ -158,25 +158,25 @@ public class CropView: UIView {
             self.addSubview(cropCircle)
             i = i+1
         }
-        
+
         redrawBorderRectangle()
     }
-    
+
     /**
      Draw/Redraw the crop rectangle such that it passes through the corner points
      */
     private func redrawBorderRectangle(){
-        
+
         let beizierPath = UIBezierPath()
         beizierPath.move(to: cropCircles[0].center)
         for i in stride(from: 2, to:9 , by: 2) {
         beizierPath.addLine(to: cropCircles[i % 8].center)
         }
-        
+
         border.path = beizierPath.cgPath
     }
 
-    
+
     /**
      Sets up pan gesture reconginzers for all 8 crop points on the crop rectangle.
      When the 4 corner points or moved, the size and angles in the rectangle varry accordingly.
@@ -186,7 +186,7 @@ public class CropView: UIView {
         let gestureRecognizer = UIPanGestureRecognizer.init(target: self, action: #selector(CropView.panGesture))
         self.addGestureRecognizer(gestureRecognizer)
     }
-    
+
     @objc internal func panGesture(gesture : UIPanGestureRecognizer){
         let point = gesture.location(in: self)
         if(gesture.state == UIGestureRecognizerState.began){
@@ -235,41 +235,41 @@ public class CropView: UIView {
             }
             moveNonCornerPoints()
             redrawBorderRectangle()
-            
+
         }
-        
+
         if(gesture.state == UIGestureRecognizerState.ended){
             if let selectedIndex = selectedIndex{
                 cropCircles[selectedIndex].backgroundColor = circleBackgroundColor
                 cropCircles[selectedIndex].layer.borderColor = circleBorderColor.cgColor
             }
             selectedIndex = nil
-            
+
             //Check if the quadrilateral is concave/convex/complex
             checkQuadrilateral()
-            
+
         }
     }
-    
+
     /**
      Updates the metaData of the image if its orientation is landscape
      */
     private func normalizedImage(image: UIImage) -> UIImage {
-        
+
         if (image.imageOrientation == UIImageOrientation.up) {
             return image;
         }
-        
+
         UIGraphicsBeginImageContextWithOptions(image.size, false, image.scale);
         let rect = CGRect(x: 0, y: 0, width: image.size.width, height: image.size.height)
         image.draw(in: rect)
-        
+
         let normalizedImage : UIImage = UIGraphicsGetImageFromCurrentImageContext()!
         UIGraphicsEndImageContext();
         return normalizedImage;
     }
-    
-    
+
+
     //MARK: Post setup methods
     /**
      Reorder the points that form a complex quadrilateral to a convex one.
@@ -284,18 +284,18 @@ public class CropView: UIView {
             high.x = max(point.x, high.x);
             high.y = max(point.y, high.y);
         }
-        
+
         let center = CGPoint(x: (low.x + high.x)/2,y: (low.y + high.y)/2)
-        
+
         func angleFromPoint(point: CGPoint) -> Float{
             let theta = (Double)(atan2f((Float)(point.y - center.y), (Float)(point.x - center.x)))
             return fmodf((Float)(Double.pi - Double.pi/4 + theta), (Float)(2.0 * Double.pi))
         }
-        
+
         var sortedArray = endPoints.sorted(by: {  (p1, p2)  in
             return angleFromPoint(point: p1) < angleFromPoint(point: p2)
         })
-        
+
         for i in 0...3 {
             cropCircles[i*2].center = sortedArray[i]
         }
@@ -303,7 +303,7 @@ public class CropView: UIView {
         redrawBorderRectangle()
     }
 
-    
+
     /**
      If the pan gesture doesnt happen on one of the crop circles, fetch the closest corner (only corners).
      */
@@ -319,7 +319,7 @@ public class CropView: UIView {
         }
         return index;
     }
-    
+
     ///Assign edge points as the center of the corners
     private func moveNonCornerPoints(){
         for i in stride(from: 1, to: 8, by: 2){
@@ -328,7 +328,7 @@ public class CropView: UIView {
             cropCircles[i].center = CGPoint(x: (cropCircles[prev].center.x + cropCircles[next].center.x)/2, y: (cropCircles[prev].center.y + cropCircles[next].center.y)/2)
         }
     }
-    
+
     ///Before moving to a new location, check if the new point inside the cropView
     private func isInsideFrame(pt: CGPoint) -> Bool{
         if(pt.x < cropImageView.frame.origin.x || pt.x > (cropImageView.frame.origin.x+cropImageView.frame.size.width)){
@@ -338,9 +338,9 @@ public class CropView: UIView {
             return false
         }
         return true
-        
+
     }
-    
+
     // MARK: Geometry Helpers
     ///Check if two points are on opposite sides of a line
     private func checkIfOppositeSides(p1:CGPoint, p2: CGPoint, l1: CGPoint, l2:CGPoint) -> Bool{
@@ -352,8 +352,8 @@ public class CropView: UIView {
             return false
         }
     }
-    
-    
+
+
     /// Get new corner points based on pan gestures
     private func getNewPoint(pt1: CGPoint, pt2:CGPoint, point: CGPoint, m:Double) -> CGPoint{
         if(abs(pt2.x - pt1.x) < 0.1){
@@ -365,15 +365,15 @@ public class CropView: UIView {
         let y =  (-1*m*c1 - c2)/(m*m + 1)
         return CGPoint(x: x, y: y)
     }
-    
-    
+
+
     /// Checks if the points form a convex/concave/complex quadrilateral
     private func checkQuadrilateral(){
         let A = cropCircles[0].center
         let B = cropCircles[2].center
         let C = cropCircles[4].center
         let D = cropCircles[6].center
-        
+
         if(checkIfOppositeSides(p1: B,p2: D,l1: A,l2: C) && checkIfOppositeSides(p1: A,p2: C,l1: B,l2: D)){//Convex
             border.strokeColor = rectangleBorderColor.cgColor
         }else if(!checkIfOppositeSides(p1: B,p2: D,l1: A,l2: C) && !checkIfOppositeSides(p1: A,p2: C,l1: B,l2: D)){//Complex
@@ -383,18 +383,18 @@ public class CropView: UIView {
             border.strokeColor = UIColor.red.cgColor
         }
     }
-    
+
     ///Returns the distance between two CGPoints
     private func distanceBetweenPoints(point1: CGPoint, point2: CGPoint) -> CGFloat{
         let xPow = pow((point1.x - point2.x), 2)
         let yPow = pow((point1.y - point2.y), 2)
         return CGFloat(sqrtf(Float(xPow + yPow)))
-        
+
     }
-    
+
     ///Returns the center of two CGPoints
     private func centerOf(firstPoint: CGPoint, secondPoint: CGPoint) -> CGPoint{
         return CGPoint(x: (firstPoint.x+secondPoint.x)/2, y: (firstPoint.y + secondPoint.y)/2)
     }
-    
+
 }
